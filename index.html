@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moodify</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=700;800&display=swap" rel="stylesheet">
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root{
+            --bg:#060817;
+            --panel:rgba(15,20,42,.72);
+            --line:rgba(255,255,255,.10);
+            --cyan:#afd9dd;
+            --purple:#8b5cf6;
+            --pink:#da88b6;
+            --green:#c9eb92;
+            --text:#f8fafc;
+            --muted:#9299ad;
+        }
+
+        *{box-sizing:border-box}
+
+        html{scroll-behavior:smooth}
+
+        body{
+            margin:0;
+            min-height:100vh;
+            color:var(--text);
+            font-family:Arial,sans-serif;
+            overflow-x:hidden;
+            background:
+                radial-gradient(circle at 12% 12%,rgba(139,92,246,.34),transparent 28%),
+                radial-gradient(circle at 88% 18%,rgba(0,229,255,.20),transparent 27%),
+                radial-gradient(circle at 52% 105%,rgba(255,60,172,.18),transparent 34%),
+                linear-gradient(135deg,#050713 0%,#091229 48%,#061d2c 100%);
+            background-attachment:fixed;
+        }
+
+        body:before,body:after{
+            content:"";
+            position:fixed;
+            border-radius:50%;
+            pointer-events:none;
+            z-index:-2;
+            filter:blur(70px);
+        }
+
+        body:before{
+            width:430px;height:430px;
+            left:-150px;top:-130px;
+            background:rgba(173, 146, 238, 0.3);
+            animation:orbA 10s ease-in-out infinite;
+        }
+
+        body:after{
+            width:420px;height:420px;
+            right:-150px;bottom:-130px;
+            background:rgba(159, 220, 227, 0.22);
+            animation:orbB 12s ease-in-out infinite;
+        }
+
+        #root{min-height:100vh}
+
+        .page-orb{
+            position:fixed;
+            width:280px;height:280px;
+            border-radius:50%;
+            background:rgba(255,60,172,.13);
+            filter:blur(75px);
+            left:42%;top:38%;
+            z-index:-1;
+            pointer-events:none;
+            animation:orbC 14s ease-in-out infinite;
+        }
+
+        .container{max-width:1120px}
+
+        .hero{
+            padding:45px 0 8px;
+            text-align:center;
+            animation:heroIn .9s cubic-bezier(.16,1,.3,1) both;
+        }
+
+        .logo-heading{
+            font-family:'Plus Jakarta Sans',Arial,sans-serif;
+            font-weight:800;
+            font-size:clamp(4rem,9vw,6.5rem);
+            letter-spacing:-5px;
+            line-height:.92;
+            margin:0;
+            color:#e9e2e2;
+            text-shadow:0 0 35px rgba(255,255,255,.08);
+        }
+
+        .logo-heading span{
+            display:inline-block;
+            background:linear-gradient(90deg,var(--green),var(--cyan),var(--purple),var(--pink),var(--green));
+            background-size:300% 100%;
+            -webkit-background-clip:text;
+            background-clip:text;
+            -webkit-text-fill-color:transparent;
+            animation:gradient 5s linear infinite;
+        }
+
+        .tagline{
+            margin:18px 0 0;
+            color:#dfe2eb;
+            letter-spacing:.08em;
+            font-size:.98rem;
+        }
+
+        .equalizer{
+            height:30px;
+            display:flex;
+            justify-content:center;
+            align-items:end;
+            gap:5px;
+            margin-top:18px;
+        }
+
+        .equalizer span{
+            display:block;
+            width:5px;
+            border-radius:8px;
+            background:linear-gradient(to top,var(--green),var(--cyan),var(--pink));
+            animation:eq .75s ease-in-out infinite alternate;
+        }
+
+        .equalizer span:nth-child(1){height:9px;animation-delay:-.1s}
+        .equalizer span:nth-child(2){height:19px;animation-delay:-.35s}
+        .equalizer span:nth-child(3){height:28px;animation-delay:-.65s}
+        .equalizer span:nth-child(4){height:15px;animation-delay:-.2s}
+        .equalizer span:nth-child(5){height:23px;animation-delay:-.5s}
+        .equalizer span:nth-child(6){height:11px;animation-delay:-.05s}
+
+        .glass{
+            background:linear-gradient(135deg,rgba(255,255,255,.085),rgba(255,255,255,.025));
+            border:1px solid var(--line);
+            backdrop-filter:blur(22px);
+            -webkit-backdrop-filter:blur(22px);
+            box-shadow:0 25px 70px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06);
+        }
+
+        .chart-container{
+            margin:35px auto 25px;
+            padding:23px;
+            border-radius:26px;
+            animation:rise .8s .12s both;
+            transition:transform .4s ease,box-shadow .4s ease,border-color .4s ease;
+        }
+
+        .chart-container:hover{
+            transform:translateY(-7px);
+            border-color:rgba(200, 228, 232, 0.35);
+            box-shadow:0 30px 80px rgba(0,229,255,.12);
+        }
+
+        .chart-title{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            margin-bottom:12px;
+        }
+
+        .chart-title h6{margin:0;font-weight:700}
+
+        .live{
+            padding:6px 11px;
+            border-radius:999px;
+            color:var(--cyan);
+            background:rgba(161, 215, 221, 0.07);
+            border:1px solid rgba(117, 173, 179, 0.18);
+            font-size:.68rem;
+            font-weight:700;
+            animation:pulse 2s ease-in-out infinite;
+        }
+
+        .controls{
+            padding:23px;
+            border-radius:25px;
+            text-align:center;
+            animation:rise .8s .25s both;
+        }
+
+        .mood-select{
+            width:100%;
+            padding:15px 18px;
+            border-radius:15px;
+            color:#e0b6b6!important;
+            background:#0c1225!important;
+            border:1px solid rgba(255,255,255,.12)!important;
+            outline:none!important;
+            transition:transform .3s ease,border-color .3s ease,box-shadow .3s ease;
+        }
+
+        .mood-select:hover{transform:translateY(-2px);border-color:rgba(0,229,255,.4)!important}
+
+        .mood-select:focus{
+            border-color:var(--cyan)!important;
+            box-shadow:0 0 0 4px rgba(0,229,255,.08),0 0 30px rgba(0,229,255,.12)!important;
+        }
+
+        .mood-select option{background:#0c1225;color:#fff}
+
+        .find-btn{
+            position:relative;
+            overflow:hidden;
+            margin-top:15px;
+            padding:14px 30px;
+            border:0;
+            border-radius:15px;
+            color:#03050b;
+            font-weight:800;
+            background:linear-gradient(110deg,var(--green),var(--cyan),var(--purple));
+            background-size:250% 250%;
+            box-shadow:0 12px 35px rgba(0,229,255,.18);
+            animation:buttonGradient 4s ease infinite;
+            transition:transform .3s ease,box-shadow .3s ease;
+        }
+
+        .find-btn:before{
+            content:"";
+            position:absolute;
+            top:-100%;
+            left:-80%;
+            width:35%;
+            height:300%;
+            background:rgba(255,255,255,.45);
+            filter:blur(10px);
+            transform:rotate(25deg);
+            transition:left .7s ease;
+        }
+
+        .find-btn:hover{
+            transform:translateY(-4px) scale(1.03);
+            box-shadow:0 20px 50px rgba(0,229,255,.30);
+        }
+
+        .find-btn:hover:before{left:130%}
+
+        .find-btn:active{transform:scale(.96)}
+
+        .loading-box{
+            margin:28px auto;
+            padding:24px;
+            max-width:500px;
+            border-radius:22px;
+            text-align:center;
+            animation:fade .4s ease both;
+        }
+
+        .loader{
+            width:44px;height:44px;
+            margin:0 auto 13px;
+            border-radius:50%;
+            border:3px solid rgba(255,255,255,.08);
+            border-top-color:var(--cyan);
+            border-right-color:var(--green);
+            animation:spin .8s linear infinite;
+        }
+
+        .song-wrapper{
+            animation:cardIn .65s cubic-bezier(.16,1,.3,1) both;
+            animation-delay:calc(var(--i) * 70ms);
+        }
+
+        .song-card{
+            position:relative;
+            overflow:hidden;
+            height:100%;
+            border-radius:24px;
+            background:linear-gradient(145deg,rgba(23,30,55,.88),rgba(7,10,21,.84));
+            border:1px solid rgba(255,255,255,.09);
+            box-shadow:0 18px 50px rgba(0,0,0,.3);
+            transition:transform .5s cubic-bezier(.16,1,.3,1),box-shadow .5s ease,border-color .5s ease;
+        }
+
+        .song-card:hover{
+            transform:translateY(-11px) scale(1.018);
+            border-color:rgba(0,229,255,.34);
+            box-shadow:0 30px 75px rgba(0,0,0,.5),0 0 35px rgba(0,229,255,.09);
+        }
+
+        .cover{
+            position:relative;
+            height:270px;
+            overflow:hidden;
+        }
+
+        .cover img{
+            width:100%;
+            height:100%;
+            display:block;
+            object-fit:cover;
+            transition:transform .8s cubic-bezier(.16,1,.3,1),filter .5s ease;
+        }
+
+        .song-card:hover .cover img{
+            transform:scale(1.08);
+            filter:brightness(1.08) saturate(1.15);
+        }
+
+        .cover:after{
+            content:"";
+            position:absolute;
+            inset:0;
+            background:linear-gradient(to top,rgba(5,7,15,.75),transparent 55%);
+            pointer-events:none;
+        }
+
+        .vinyl{
+            position:absolute;
+            z-index:3;
+            right:18px;
+            bottom:-28px;
+            width:66px;height:66px;
+            border-radius:50%;
+            border:5px solid #05070d;
+            background:repeating-radial-gradient(circle,#111 0 2px,#303030 3px 4px);
+            box-shadow:0 10px 25px rgba(0,0,0,.5);
+            transition:bottom .4s ease;
+        }
+
+        .vinyl:after{
+            content:"";
+            position:absolute;
+            width:11px;height:11px;
+            top:50%;left:50%;
+            transform:translate(-50%,-50%);
+            border-radius:50%;
+            background:var(--cyan);
+            box-shadow:0 0 12px var(--cyan);
+        }
+
+        .song-card:hover .vinyl{
+            bottom:17px;
+            animation:spin 2s linear infinite;
+        }
+
+        .song-body{padding:21px!important}
+
+        .song-title{
+            font-weight:800;
+            margin-bottom:5px;
+            transition:color .3s ease,transform .3s ease;
+        }
+
+        .song-card:hover .song-title{
+            color:var(--cyan);
+            transform:translateX(3px);
+        }
+
+        .artist{
+            color:var(--muted)!important;
+            font-size:.9rem;
+        }
+
+        .listen-btn{
+            width:100%;
+            margin-top:12px;
+            padding:11px;
+            border-radius:13px;
+            color:#fff!important;
+            border:1px solid rgba(255,255,255,.10)!important;
+            background:linear-gradient(90deg,rgba(255,60,172,.18),rgba(139,92,246,.22))!important;
+            transition:transform .3s ease,box-shadow .3s ease,border-color .3s ease!important;
+        }
+
+        .listen-btn:hover{
+            transform:translateY(-3px);
+            border-color:rgba(255,60,172,.5)!important;
+            box-shadow:0 10px 30px rgba(255,60,172,.16);
+        }
+
+        .empty{
+            text-align:center;
+            padding:45px 10px;
+            color:var(--muted);
+            animation:fade .6s ease both;
+        }
+
+        .empty-icon{
+            display:block;
+            font-size:3.4rem;
+            margin-bottom:10px;
+            animation:floatIcon 3s ease-in-out infinite;
+        }
+
+        @keyframes heroIn{from{opacity:0;transform:translateY(35px) scale(.96)}to{opacity:1;transform:none}}
+        @keyframes rise{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
+        @keyframes cardIn{from{opacity:0;transform:translateY(35px) scale(.95)}to{opacity:1;transform:none}}
+        @keyframes fade{from{opacity:0}to{opacity:1}}
+        @keyframes gradient{0%{background-position:0 50%}50%{background-position:100% 50%}100%{background-position:0 50%}}
+        @keyframes buttonGradient{0%,100%{background-position:0 50%}50%{background-position:100% 50%}}
+        @keyframes eq{from{transform:scaleY(.35);opacity:.6}to{transform:scaleY(1);opacity:1}}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes pulse{0%,100%{box-shadow:0 0 0 rgba(0,229,255,0)}50%{box-shadow:0 0 20px rgba(0,229,255,.15)}}
+        @keyframes floatIcon{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+        @keyframes orbA{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(110px,80px) scale(1.15)}}
+        @keyframes orbB{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-100px,-70px) scale(1.18)}}
+        @keyframes orbC{0%,100%{transform:translate(0,0)}50%{transform:translate(110px,-90px)}}
+
+        @media(max-width:768px){
+            .logo-heading{font-size:4rem;letter-spacing:-3px}
+            .cover{height:235px}
+            .chart-container,.controls{border-radius:20px}
+        }
+
+        @media(prefers-reduced-motion:reduce){
+            *,*:before,*:after{
+                animation-duration:.01ms!important;
+                animation-iteration-count:1!important;
+                transition-duration:.01ms!important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="page-orb"></div>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const customTracks = {
+            "happy": [
+                { track: "Kar Gayi Chull", artist: "Badshah & Neha Kakkar" },
+                { track: "Badtameez Dil", artist: "Benny Dayal" },
+                { track: "Gallingallin", artist: "Mika Singh" },
+                { track: "Subah Subah", artist: "Arijit Singh" },
+                { track: "London Thumakda", artist: "Labh Janjua" },
+                { track: "Kala Chashma", artist: "Amar Arshi & Badshah" },
+                { track: "Gallan Goodiyaan", artist: "Yashita Sharma" },
+                { track: "Aankh Marey", artist: "Neha Kakkar" },
+                { track: "Mauja Hi Mauja", artist: "Mika Singh" },
+                { track: "Ghani Cool Chori", artist: "Amit Trivedi" },
+                { track: "Chor Bazari", artist: "Neeraj Shridhar" },
+                { track: "Twist", artist: "Neeraj Shridhar" },
+                { track: "Desi Girl", artist: "Shankar-Ehsaan-Loy" },
+                { track: "Happy", artist: "Pharrell Williams" },
+                { track: "Can't Stop the Feeling", artist: "Justin Timberlake" },
+                { track: "Uptown Funk", artist: "Mark Ronson ft. Bruno Mars" },
+                { track: "Don't Start Now", artist: "Dua Lipa" },
+                { track: "Walking On Sunshine", artist: "Katrina and the Waves" },
+                { track: "Cruel Summer", artist: "Taylor Swift" },
+                { track: "Stay", artist: "The Kid LAROI & Justin Bieber" },
+                { track: "Levitating", artist: "Dua Lipa" },
+                { track: "Dance The Night", artist: "Dua Lipa" },
+                { track: "Good Time", artist: "Owl City & Carly Rae Jepsen" },
+                { track: "24K Magic", artist: "Bruno Mars" },
+                { track: "Cake By The Ocean", artist: "DNCE" }
+            ],
+            "sad": [
+                { track: "Channa Mereya", artist: "Arijit Singh" },
+                { track: "Tujhe Kitna Chahne Lage", artist: "Arijit Singh" },
+                { track: "Agar Tum Saath Ho", artist: "Alka Yagnik & Arijit Singh" },
+                { track: "Bekhayali", artist: "Sachet Tandon" },
+                { track: "Kabira", artist: "Tochi Raina" },
+                { track: "Tune Jo Na Kaha", artist: "Mohit Chauhan" },
+                { track: "Duaa", artist: "Arijit Singh" },
+                { track: "Hamari Adhuri Kahani", artist: "Arijit Singh" },
+                { track: "Main Dhoondne Ko Zamaane Mein", artist: "Arijit Singh" },
+                { track: "Jiyein Kyun", artist: "Papon" },
+                { track: "Bhula Diya", artist: "Darshan Raval" },
+                { track: "Tanhayee", artist: "Sonu Nigam" },
+                { track: "Abhi Mujh Mein Kahin", artist: "Sonu Nigam" },
+                { track: "Someone Like You", artist: "Adele" },
+                { track: "Fix You", artist: "Coldplay" },
+                { track: "Stay With Me", artist: "Sam Smith" },
+                { track: "All I Want", artist: "Kodaline" },
+                { track: "Another Love", artist: "Tom Odell" },
+                { track: "Glimpse of Us", artist: "Joji" },
+                { track: "Drivers License", artist: "Olivia Rodrigo" },
+                { track: "Lose You To Love Me", artist: "Selena Gomez" },
+                { track: "Say Something", artist: "A Great Big World" },
+                { track: "When I Was Your Man", artist: "Bruno Mars" },
+                { track: "The Night We Met", artist: "Lord Huron" },
+                { track: "Whiskey Lullaby", artist: "Brad Paisley" }
+            ],
+            "romantic": [
+                { track: "Tum Hi Ho", artist: "Arijit Singh" },
+                { track: "Dil Ibaadat", artist: "KK" },
+                { track: "Kesariya", artist: "Arijit Singh" },
+                { track: "Raatan Lambiyan", artist: "Jubin Nautiyal" },
+                { track: "Zaalima", artist: "Arijit Singh" },
+                { track: "Jeene Laga Hoon", artist: "Atif Aslam" },
+                { track: "Pehla Nasha", artist: "Udit Narayan" },
+                { track: "Tera Ban Jaunga", artist: "Akhil Sachdeva" },
+                { track: "Chura Liya Hai Tumne Jo Dil Ko", artist: "Asha Bhosle" },
+                { track: "Mere Haath Mein", artist: "Sonu Nigam" },
+                { track: "Tujh Mein Rab Dikhta Hai", artist: "Roop Kumar Rathod" },
+                { track: "Tum Se Hi", artist: "Mohit Chauhan" },
+                { track: "Ban Ja Rani", artist: "Guru Randhawa" },
+                { track: "Perfect", artist: "Ed Sheeran" },
+                { track: "All of Me", artist: "John Legend" },
+                { track: "Die With A Smile", artist: "Bruno Mars & Lady Gaga" },
+                { track: "Say You Won't Let Go", artist: "James Arthur" },
+                { track: "Thinking Out Loud", artist: "Ed Sheeran" },
+                { track: "Just The Way You Are", artist: "Bruno Mars" },
+                { track: "Lover", artist: "Taylor Swift" },
+                { track: "A Thousand Years", artist: "Christina Perri" },
+                { track: "Until I Found You", artist: "Stephen Sanchez" },
+                { track: "My Heart Will Go On", artist: "Celine Dion" },
+                { track: "Adore You", artist: "Harry Styles" },
+                { track: "Make You Feel My Love", artist: "Adele" }
+            ],
+            "rock": [
+                { track: "Sadda Haq", artist: "Mohit Chauhan" },
+                { track: "Nadaan Parindey", artist: "Mohit Chauhan" },
+                { track: "Bhaag D.K. Bose", artist: "Ram Sampath" },
+                { track: "Rock On!!", artist: "Farhan Akhtar" },
+                { track: "Sinbad The Sailor", artist: "Farhan Akhtar" },
+                { track: "Pichle Saat Dinon Mein", artist: "Farhan Akhtar" },
+                { track: "Zinda", artist: "Siddharth Mahadevan" },
+                { track: "Bulleya", artist: "Amit Mishra" },
+                { track: "Deva Deva", artist: "Arijit Singh" },
+                { track: "Chale Chalo", artist: "A.R. Rahman" },
+                { track: "Mitwa", artist: "Shankar-Ehsaan-Loy" },
+                { track: "Socha Hai", artist: "Farhan Akhtar" },
+                { track: "In The End", artist: "Linkin Park" },
+                { track: "Smells Like Teen Spirit", artist: "Nirvana" },
+                { track: "Back In Black", artist: "AC/DC" },
+                { track: "Bohemian Rhapsody", artist: "Queen" },
+                { track: "Sweet Child O' Mine", artist: "Guns N' Roses" },
+                { track: "Numb", artist: "Linkin Park" },
+                { track: "Livin' On A Prayer", artist: "Bon Jovi" },
+                { track: "Enter Sandman", artist: "Metallica" },
+                { track: "Basket Case", artist: "Green Day" },
+                { track: "Highway to Hell", artist: "AC/DC" },
+                { track: "Believer", artist: "Imagine Dragons" },
+                { track: "Zombie", artist: "The Cranberries" },
+                { track: "Chop Suey!", artist: "System of a Down" }
+            ],
+            "unhinged": [
+                { track: "Zingaat", artist: "Ajay-Atul" },
+                { track: "Dhinka Chika", artist: "Mika Singh" },
+                { track: "Ainvayi Ainvayi", artist: "Salim-Sulaiman" },
+                { track: "Jumma Chumma De De", artist: "Sudesh Bhosle" },
+                { track: "Lungi Dance", artist: "Yo Yo Honey Singh" },
+                { track: "Baby Doll", artist: "Kanika Kapoor" },
+                { track: "Char Bottal Vodka", artist: "Yo Yo Honey Singh" },
+                { track: "Chinta Ta Ta Chita Chita", artist: "Mika Singh" },
+                { track: "Shaitan Ka Saala", artist: "Sohail Sen" },
+                { track: "Gandat Baat", artist: "Mika Singh" },
+                { track: "Gandi Baat", artist: "Kalpana Patowary" },
+                { track: "Emotional Attyachar", artist: "Amit Trivedi" },
+                { track: "FE!N", artist: "Travis Scott" },
+                { track: "SICKO MODE", artist: "Travis Scott" },
+                { track: "The Real Slim Shady", artist: "Eminem" },
+                { track: "Mr. Brightside", artist: "The Killers" },
+                { track: "Gasolina", artist: "Daddy Yankee" },
+                { track: "U Can't Touch This", artist: "MC Hammer" },
+                { track: "Toxic", artist: "Britney Spears" },
+                { track: "Look What You Made Me Do", artist: "Taylor Swift" },
+                { track: "Bulls On Parade", artist: "Rage Against The Machine" },
+                { track: "HUMBLE.", artist: "Kendrick Lamar" },
+                { track: "Wrecking Ball", artist: "Miley Cyrus" },
+                { track: "Break Stuff", artist: "Limp Bizkit" },
+                { track: "Bad Romance", artist: "Lady Gaga" }
+            ]
+        };
+
+        const App = () => {
+            const [mood, setMood] = React.useState("");
+            const [songs, setSongs] = React.useState([]);
+            const [loading, setLoading] = React.useState(false);
+            const [history, setHistory] = React.useState({
+                happy: 0,
+                sad: 0,
+                romantic: 0,
+                rock: 0,
+                unhinged: 0
+            });
+
+            const chartRef = React.useRef(null);
+            const chartInstance = React.useRef(null);
+
+            React.useEffect(() => {
+                if (!chartRef.current) return;
+                if (chartInstance.current) {
+                    chartInstance.current.destroy();
+                }
+
+                const moods = [
+                    { name: "Happy", value: history.happy },
+                    { name: "Sad", value: history.sad },
+                    { name: "Romantic", value: history.romantic },
+                    { name: "Rock", value: history.rock },
+                    { name: "Unhinged", value: history.unhinged }
+                ];
+
+                const total = moods.reduce(
+                    (sum, item) => sum + item.value,
+                    0
+                );
+
+                const labels = moods.map(item => {
+
+                    if (total === 0) {
+                        return `${item.name} (0%)`;
+                    }
+
+                    const percentage = Math.round(
+                        (item.value / total) * 100
+                    );
+
+                    return `${item.name} (${percentage}%)`;
+                });
+
+                const ctx = chartRef.current.getContext("2d");
+
+                chartInstance.current = new Chart(ctx, {
+
+                    type: "doughnut",
+
+                    data: {
+                        labels: labels,
+
+                        datasets: [{
+                            data: moods.map(item => item.value),
+
+                            backgroundColor: [
+                                "#A3FF12",
+                                "#00E5FF",
+                                "#FF3CAC",
+                                "#FF9F1C",
+                                "#8B5CF6"
+                            ],
+
+                            borderWidth: 0,
+                            hoverOffset: 12
+                        }]
+                    },
+
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+
+                        cutout: "68%",
+
+                        animation: {
+                            duration: 1100,
+                            easing: "easeOutQuart"
+                        },
+
+                        plugins: {
+                            legend: {
+                                position: "right",
+
+                                labels: {
+                                    color: "#ffffff",
+                                    padding: 14,
+                                    usePointStyle: true
+                                }
+                            }
+                        }
+                    }
+                });
+
+            }, [history]);
+
+
+            const findSongs = async () => {
+
+                if (mood === "") {
+                    alert("Please select a mood first!");
+                    return;
+                }
+
+                setLoading(true);
+                setSongs([]);
+
+                const songsToQuery = customTracks[mood] || [];
+                const fetchedSongs = [];
+
+                for (const currentSong of songsToQuery) {
+
+                    const queryTerm =
+                        `${currentSong.track} ${currentSong.artist}`;
+
+                    const url =
+                        `https://itunes.apple.com/search?term=${encodeURIComponent(queryTerm)}&entity=song&limit=1`;
+
+                    try {
+
+                        const response = await fetch(url);
+                        const data = await response.json();
+
+                        if (data.results && data.results.length > 0) {
+
+                            const song = data.results[0];
+
+                            const youtubeLink =
+                                `https://www.youtube.com/results?search_query=${encodeURIComponent(
+                                    song.trackName +
+                                    " " +
+                                    song.artistName +
+                                    " official music video"
+                                )}`;
+
+                            const artwork =
+                                song.artworkUrl100
+                                    ? song.artworkUrl100.replace(
+                                        "100x100",
+                                        "600x600"
+                                    )
+                                    : "https://via.placeholder.com/600";
+
+                            fetchedSongs.push({
+
+                                id:
+                                    song.trackId ||
+                                    Math.random(),
+
+                                trackName:
+                                    song.trackName,
+
+                                artistName:
+                                    song.artistName,
+
+                                artwork:
+                                    artwork,
+
+                                url:
+                                    youtubeLink,
+
+                                mood:
+                                    mood
+                            });
+                        }
+
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+
+                setSongs(fetchedSongs);
+                setLoading(false);
+            };
+
+
+            return (
+                <div className="container text-center py-4">
+
+                    <header className="hero">
+
+                        <h1 className="logo-heading">
+                            Mood<span>ify</span>
+                        </h1>
+
+                        <p className="tagline">
+                            Your mood. Your music. Your moment.
+                        </p>
+
+                        <div className="equalizer">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+
+                    </header>
+
+
+                    <div className="row justify-content-center">
+                        <div className="col-md-8 col-lg-6">
+                            <div className="chart-container glass">
+                                <div className="chart-title">
+
+                                    <h6>
+                                        Your Mood Screen Time
+                                    </h6>
+
+                                    <span className="live">
+                                        ● LIVE VIBES
+                                    </span>
+
+                                </div>
+
+                                <div
+                                    style={{
+                                        height: "230px",
+                                        position: "relative"
+                                    }}
+                                >
+                                    <canvas ref={chartRef}></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div className="controls glass">
+
+                        <select
+                            className="mood-select"
+                            value={mood}
+                            onChange={(e) =>
+                                setMood(e.target.value)
+                            }
+                        >
+
+                            <option value="">
+                                🎧 Select Your Mood
+                            </option>
+
+                            <option value="happy">
+                                ☺️Happy
+                            </option>
+
+                            <option value="sad">
+                                ☹️Sad
+                            </option>
+
+                            <option value="romantic">
+                                💗Romantic
+                            </option>
+
+                            <option value="rock">
+                                🎸Rock
+                            </option>
+
+                            <option value="unhinged">
+                                🔥Unhinged / Crazy
+                            </option>
+                        </select>
+
+
+                        <button
+                            className="find-btn"
+                            onClick={findSongs}
+                        >
+                            Find My Vibe
+                        </button>
+                    </div>
+
+
+                    {loading && (
+
+                        <div className="loading-box glass">
+                            <div className="loader"></div>
+
+                            <h5>
+                                Finding your absolute bangers...
+                            </h5>
+
+                            <p className="text-muted">
+                                Matching songs to your vibe 🎧
+                            </p>
+                        </div>
+
+                    )}
+
+
+                    <div className="row mt-4">
+
+                        {songs.map((song, index) => (
+
+                            <div
+                                className="col-md-4 mb-4 song-wrapper"
+                                style={{ "--i": index }}
+                                key={song.id}
+                            >
+
+                                <div className="song-card">
+                                    <div className="cover">
+
+                                        <img src={song.artwork} alt={song.trackName}/>
+
+                                        <div className="vinyl"></div>
+                                    </div>
+
+
+                                    <div className="song-body">
+
+                                        <h5 className="song-title text-truncate">
+                                            {song.trackName}
+                                        </h5>
+
+                                        <p className="artist text-truncate">
+                                            {song.artistName}
+                                        </p>
+
+
+                                        <a href={song.url} target="_blank" rel="noopener noreferrer" className="btn listen-btn"
+
+                                            onClick={() => {
+                                                setHistory(prev => ({...prev,[song.mood]:prev[song.mood] + 1}));
+                                            }}
+                                        >
+                                            ▶ Listen on YouTube
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {!loading && songs.length === 0 && (
+                        <div className="empty">
+
+                            <span className="empty-icon">
+                                🎧
+                            </span>
+
+                            <h5>
+                                Ready to find your vibe?
+                            </h5>
+
+                            <p>
+                                Select a mood and discover your next favorite song.
+                            </p>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
